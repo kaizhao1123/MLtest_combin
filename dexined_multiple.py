@@ -107,20 +107,21 @@ def combineImages():
         # get the black triangle based on the LEFT point.
         left_pt1 = (lx, height-ly)
         left_pt2 = (lx, height)
-        left_pt3 = (lx+ly+1, height)  # to adjust with +1.
+        left_pt3 = (lx+2*ly+1, height)  # to adjust with +1.
         left_triangle_cnt = np.array([left_pt1, left_pt2, left_pt3])
 
         # get the black triangle based on the RIGHT point.
         right_pt1 = (rx, height-ry)
         right_pt2 = (rx, height)
-        right_pt3 = (rx-ry-1, height)       # to adjust with -1.
+        right_pt3 = (rx-2*ry-1, height)       # to adjust with -1.
         right_triangle_cnt = np.array([right_pt1, right_pt2, right_pt3])
 
         image_contour[height - ly: height, : lx] = coverImage_left
         image_contour[height - ry: height, rx:] = coverImage_right
 
         # combine the contour image and the original image.
-        result_image = cv2.add(image_contour, image_ori)
+        # result_image = cv2.add(image_contour, image_ori)
+        result_image = image_contour
 
         # add the left triangle and right triangle.
         cv2.drawContours(result_image, [left_triangle_cnt], 0, (255, 0, 0), -1)
@@ -139,7 +140,7 @@ def modifyEdges(edges, gap):
     for row in range(0, gap):
         # for col in range(0, width):
         for col in range(0, width):
-            if temp[row][col][0] >= 20:
+            if temp[row][col][0] >= 30:
                 res.append((col, row))
     res = sorted(res)
     # print(res)
@@ -180,13 +181,13 @@ def modifyEdges(edges, gap):
         # print(item)
         x = item[0]
         y_list = item[1]
-        if crop_left <= x <= crop_right:
+        if crop_left <= x <= crop_right and y_list[len(y_list)-1] == (gap-1):
             result.append((x, y_list))
     print("result")
     print(result)
 
     # get the most right LEFT point.
-    # point_y = 0
+    point_y = 0
     # completeLeft = False
     left_first_x = 0
     left_first_y = 0
@@ -200,6 +201,7 @@ def modifyEdges(edges, gap):
         Y_list = item[1]    # row
 
         y, max_gap, stop = isContinuous(Y_list)
+        # y, stop = isContinuous(Y_list, gap)
         point_y = y
         completeLeft = stop
         if completeLeft is True:           # find the intersection point.
@@ -235,8 +237,8 @@ def modifyEdges(edges, gap):
         item = result[j]
         X = item[0]  # col
         Y_list = item[1]  # row
-
         y, max_gap, stop = isContinuous(Y_list)
+        # y, stop = isContinuous(Y_list, gap)
         point_y = y
         completeRight = stop
         if completeRight is True:  # find the intersection point.
@@ -260,6 +262,8 @@ def modifyEdges(edges, gap):
 
     leftPoint_Y = min(leftPoint_Y, 4)
     rightPoint_Y = min(rightPoint_Y, 4)
+    leftPoint_Y = max(leftPoint_Y, 3)
+    rightPoint_Y = max(rightPoint_Y, 3)
     return leftPoint_X, leftPoint_Y, rightPoint_X, rightPoint_Y
 
 
@@ -271,8 +275,30 @@ def isContinuous(list):
         if diff > 1:
             max_gap = max(max_gap, diff)
             point_y = list[i]
-            break
+            if list[i] < 5:
+                return point_y, max_gap, True
+            else:
+                break
     if max_gap == 1:
         return point_y, max_gap, True
     else:
         return point_y, max_gap, False
+
+
+# def isContinuous(list, gap):
+#     count = 5
+#     point_y = 0
+#     for i in reversed(range(1, len(list))):
+#         if list[i] == (count + gap - 6):
+#             if count > 0:
+#                 count -= 1
+#             if count == 0:
+#                 point_y = 5
+#                 break
+#         else:
+#             point_y = list[i+1]
+#             return point_y, False
+#     if count == 0:
+#         return point_y, True
+#     else:
+#         return point_y, False
