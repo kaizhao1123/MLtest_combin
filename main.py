@@ -2,7 +2,10 @@ import sys
 import os
 import os.path
 import tkinter as tk
-from dexined import usingDexiNed
+import tracemalloc
+
+from LDC import usingLDC
+from dexined import usingDexiNed, convertToMask
 from dexined_multiple import usingDexiNed_multiple, combineImages
 
 
@@ -17,9 +20,18 @@ if __name__ == '__main__':
 
 
     def running():
+        tracemalloc.start()
+
         # usingDexiNed()      # run model to get the contour of single image.
         # usingDexiNed_multiple()
-        combineImages()
+        # combineImages()
+        usingLDC()
+
+
+
+        # print("DIP time: --- %0.3f seconds ---" % (time() - startTime) + "\n")
+        print("DIP memory: --- %0.2f M ---" % (tracemalloc.get_traced_memory()[0] / 1000000) + "\n")
+        tracemalloc.stop()
         return
 
 

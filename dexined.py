@@ -1,3 +1,4 @@
+import math
 import os
 import sys
 import time
@@ -5,6 +6,7 @@ import time
 import cv2
 import numpy as np
 import torch
+from PIL import Image
 from torch.utils.data import DataLoader
 from datasets import TestDataset
 from image import save_image_batch_to_disk
@@ -95,7 +97,7 @@ def usingDexiNed():
     imagePath = os.path.join(root_path, 'data')
     os.makedirs(imagePath, exist_ok=True)
 
-    imgId = 16
+    imgId = 13
     image = cv2.imread(os.path.join(imagePath, "00{:02d}.bmp".format(imgId)), cv2.IMREAD_COLOR)
 
     # messagebox.showerror("image", os.path.join(imagePath, "00{:02d}.bmp".format(1)))
@@ -141,6 +143,7 @@ def usingDexiNed():
     # print(file_names)
     #
     # # test the input image.
+
     with torch.no_grad():
         preds = model(inputImage)  # get the tensor of the result image(contour)
         save_image_batch_to_disk(preds,
@@ -157,3 +160,62 @@ def usingDexiNed():
     print(time.time() - startTime)
     print('------------------- Test End -----------------------------')
     #messagebox.showerror("test info", "complete test! ")
+
+    convertToMask(output_dir, file_names)
+
+
+def convertToMask(output_dir, file_name):
+    # convert to mask
+    img = cv2.imread(os.path.join(output_dir, file_name))
+    print(img.shape)
+    # img = cv2.bitwise_not(img)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # change to gray image
+
+    thresh = cv2.threshold(gray, 1, 255, cv2.THRESH_BINARY)[1]
+    element = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))  # Morphological denoising
+    dst = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, element)
+    contours = cv2.findContours(dst, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
+    big_contour = max(contours, key=cv2.contourArea)
+    maxRect = cv2.boundingRect(big_contour)
+    X, Y, width, height = maxRect
+
+    print(maxRect)
+
+    # convert to binary image
+    h, w, _ = img.shape
+    bi = np.zeros([h, w, 3], dtype=np.uint8)
+    cv2.drawContours(bi, [big_contour], 0, (255, 255, 255), thickness=-1)
+    cv2.imwrite(output_dir + "/" + file_name + '_Thre_drawCon_binary.jpg', bi)
+
+    # # 2. get the X, Y, width
+    # gray_new = gray[0:gray.shape[0] - 10, 0:720]
+    # thresh = cv2.threshold(gray_new, 0, 255, cv2.THRESH_BINARY)[1]
+    # element = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))  # Morphological denoising
+    # dst = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, element)
+    # contours = cv2.findContours(dst, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
+    # big_contour = max(contours, key=cv2.contourArea)
+    # maxRect = cv2.boundingRect(big_contour)
+    # X, Y, width, _ = maxRect
+    # print(maxRect)
+
+
+
+    # crop the target and put it into the center of black template, to get the mask image.
+
+    print(Y + height)
+    print("**")
+    firstCrop_binary = bi[Y: Y + height, X: X + width]
+    start_Y = math.ceil((200 - height) / 2)
+    start_X = math.ceil((200 - width) / 2)
+    mask_image = np.zeros([200, 200, 3], dtype=np.uint8)
+
+    print(start_Y + height)
+    print("///")
+
+    mask_image[start_Y: start_Y + height, start_X: start_X + width] = firstCrop_binary
+
+
+    mask = cv2.cvtColor(mask_image, cv2.COLOR_BGR2GRAY)  # array
+    mask = Image.fromarray(mask)  # convert to image
+
+    mask.save("C:/Users/Kai Zhao/PycharmProjects/MLtest2/result/" + 'Mask_0{:02d}0.png'.format(9 - 1))

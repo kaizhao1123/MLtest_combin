@@ -1,7 +1,9 @@
+import math
 import os
 import cv2
 import numpy as np
 import torch
+from PIL import Image
 # from tkinter import messagebox
 
 def image_normalization(img, img_min=0, img_max=255, epsilon=1e-12):
@@ -60,7 +62,7 @@ def save_image_batch_to_disk(tensor, output_dir, file_name, img_shape=None):
     #         fuse = fuse.astype(np.uint8)
 
     # there are 7 NN outputs, we need the last one.
-    tmp_img = tmp[6]
+    tmp_img = tmp[len(tmp)-1]
     tmp_img = np.uint8(image_normalization(tmp_img))
 
     # Resize prediction to match input image size
@@ -73,3 +75,4 @@ def save_image_batch_to_disk(tensor, output_dir, file_name, img_shape=None):
     output_file_name_f = os.path.join(output_dir, file_name)
     cv2.imwrite(output_file_name_f, fuse)
 
+    # #########################
