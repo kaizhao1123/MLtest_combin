@@ -36,8 +36,6 @@ def count_parameters(model=None):
 
 def save_image_batch_to_disk(tensor, output_dir, file_name, img_shape=None):
 
-    # os.makedirs(output_dir, exist_ok=True)
-
     edge_maps = []
     for i in tensor:
         tmp = torch.sigmoid(i).cpu().detach().numpy()
@@ -52,18 +50,6 @@ def save_image_batch_to_disk(tensor, output_dir, file_name, img_shape=None):
     tmp = tensor[:, 0, ...]
     tmp = np.squeeze(tmp)
 
-    # Iterate our all 7 NN outputs for a particular image
-    # for i in range(tmp.shape[0]):
-    #     tmp_img = tmp[i]
-    #     tmp_img = np.uint8(image_normalization(tmp_img))
-    #     # Resize prediction to match input image size
-    #     if not tmp_img.shape[1] == i_shape[0] or not tmp_img.shape[0] == i_shape[1]:
-    #         tmp_img = cv2.resize(tmp_img, (i_shape[0], i_shape[1]))
-    #
-    #     if i == 6:
-    #         fuse = tmp_img
-    #         fuse = fuse.astype(np.uint8)
-
     # there are 7 NN outputs, we need the last one.
     tmp_img = tmp[len(tmp)-1]
     tmp_img = np.uint8(image_normalization(tmp_img))
@@ -73,7 +59,6 @@ def save_image_batch_to_disk(tensor, output_dir, file_name, img_shape=None):
         tmp_img = cv2.resize(tmp_img, (i_shape[0], i_shape[1]))
 
     fuse = tmp_img
-
     fuse = fuse.astype(np.uint8)
 
     print(np.shape(fuse))
@@ -83,9 +68,9 @@ def save_image_batch_to_disk(tensor, output_dir, file_name, img_shape=None):
 
     imageName = os.path.splitext(file_name)[0]
     # save to .mat
-    # sio.savemat(join(output_dir, 'test_mat', '{}.mat'.format(imageName)), {'result': fuse})
+    sio.savemat(join(output_dir, 'contour_mat', '{}.mat'.format(imageName)), {'result': fuse})
 
     # save to .png
-    Image.fromarray(fuse).save(join(output_dir, 'test_png', '{}.png'.format(imageName)))
+    Image.fromarray(fuse).save(join(output_dir, 'contour_png', '{}.png'.format(imageName)))
 
     # #########################

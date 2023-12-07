@@ -11,17 +11,7 @@ from image import save_image_batch_to_disk
 from model import DexiNed
 
 
-def app_path():
-    """Returns the base application path."""
-    if hasattr(sys, 'frozen'):
-        # Handles PyInstaller
-        return os.path.dirname(sys.executable)
-    return os.path.dirname(__file__)
-
-
-def usingDexiNed_multiple():
-    root_path = app_path()
-    print(root_path)
+def usingDexiNed_multiple(obj_path):
 
     startTime = time.time()
     # Get computing device
@@ -40,21 +30,21 @@ def usingDexiNed_multiple():
     mean_bgr = [103.939, 116.779, 123.68]
 
     # the input path
-    imagePath = os.path.join(root_path, 'sample_pic')
-    os.makedirs(imagePath, exist_ok=True)
+    imagePath = obj_path.path_pic
 
     # the output path.
-    output_dir = os.path.join(root_path, 'sample_result')
-    os.makedirs(output_dir, exist_ok=True)
+    output_dir = obj_path.path_result + 'dexined/'
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
 
     # load the weight of the model to local device
-    checkpoint_path = os.path.join(root_path, 'checkpoints/10_model_DexiNed.pth')
+    checkpoint_path = os.path.join(obj_path.path_root, 'checkpoints/10_model_DexiNed.pth')
     model.load_state_dict(torch.load(checkpoint_path, map_location=device))
     model.eval()
 
     # for multiple images
     for imageName in os.listdir(imagePath):
-        imageNum = os.path.splitext(imageName)[0]
+        # imageNum = os.path.splitext(imageName)[0]
         image = cv2.imread(os.path.join(imagePath, imageName), cv2.IMREAD_COLOR)
         img = cv2.resize(image, (img_width, img_height))
         img = np.array(img, dtype=np.float32)
@@ -83,19 +73,20 @@ def usingDexiNed_multiple():
     print('------------------- Test End -----------------------------')
 
 
-def combineImages():
-    root_path = app_path()
-    image_ori_path = os.path.join(root_path, 'sample_pic')
-    image_contour_path = os.path.join(root_path, 'sample_result/test_png')
-    output_path = os.path.join(root_path, 'sample_result/test_mask')
-    for imgId in range(1, 37):
-        # image_ori = cv2.imread(os.path.join(image_ori_path, "00{:02d}.bmp".format(imgId)), cv2.IMREAD_COLOR)
-        image_contour = cv2.imread(os.path.join(image_contour_path, "00{:02d}.png".format(imgId)), cv2.IMREAD_COLOR)
+def combineImages(obj_path):
+
+    image_contour_path = os.path.join(obj_path.path_result, 'dexined/contour_png')
+    output_path = os.path.join(obj_path.path_result, 'dexined/mask/')
+    # for imgId in range(1, 37):
+    for imageName in os.listdir(image_contour_path):
+        # image_contour = cv2.imread(os.path.join(image_contour_path, "00{:02d}.png".format(imgId)), cv2.IMREAD_COLOR)
+        imgId = os.path.splitext(imageName)[0]
+        image_contour = cv2.imread(os.path.join(image_contour_path, imageName), cv2.IMREAD_COLOR)
         width = image_contour.shape[1]
         height = image_contour.shape[0]
 
         # get the most right LEFT point and the most left RIGHT point.
-        lx, ly, rx, ry = modifyEdges(image_contour, 15)
+        lx, ly, rx, ry = modifyEdges(image_contour, 10)     # the best value of gap is 10
         print(imgId, lx, ly, rx, ry)
 
         coverImage_left = np.zeros((ly, lx, 3))
@@ -126,15 +117,18 @@ def combineImages():
         cv2.drawContours(result_image, [left_triangle_cnt], 0, (0, 0, 0), -1)
         cv2.drawContours(result_image, [right_triangle_cnt], 0, (0, 0, 0), -1)
 
-        cv2.imwrite(os.path.join(output_path, '00{:02d}.png'.format(imgId)), result_image)
+        # cv2.imwrite(os.path.join(output_path, '00{:02d}.png'.format(imgId)), result_image)
+        cv2.imwrite(os.path.join(image_contour_path, imageName), result_image)
 
-        convertToMask(output_path, '00{:02d}.png'.format(imgId))
+        # convert to mask images
+        # convertToMask(output_path, '00{:02d}.png'.format(imgId))
+        convertToMask(image_contour_path, imageName, output_path)
 
 
 #
-def convertToMask(output_dir, file_name):
+def convertToMask(input_path, file_name, output_path):
     # convert to mask
-    img = cv2.imread(os.path.join(output_dir, file_name))
+    img = cv2.imread(os.path.join(input_path, file_name))
     # print(img.shape)
     # img = cv2.bitwise_not(img)
 
@@ -167,7 +161,7 @@ def convertToMask(output_dir, file_name):
     mask = cv2.cvtColor(mask_image, cv2.COLOR_BGR2GRAY)  # array
     mask = Image.fromarray(mask)  # convert to image
 
-    mask.save(output_dir + "/mask/Mask_" + file_name)
+    mask.save(output_path + file_name)
 
 
 ####################################################
@@ -181,7 +175,7 @@ def modifyEdges(edges, gap):
     for row in range(0, gap):
         # for col in range(0, width):
         for col in range(0, width):
-            if temp[row][col][0] >= 30:
+            if temp[row][col][0] >= 10:
                 res.append((col, row))
     res = sorted(res)
     # print(res)
@@ -227,27 +221,34 @@ def modifyEdges(edges, gap):
     print("result")
     print(result)
 
-    # get the most right LEFT point.
-    point_y = 0
-    # completeLeft = False
+    # get the most right LEFT point ####################
+    leftPoint_X = 0
+    leftPoint_Y = 0
+
+    # temp data structure for record the process of searching the target point.
     left_first_x = 0
     left_first_y = 0
     find_first_left = False
-    countLeftPointsWithGap2 = 0
-    leftPoint_X = 0
-    leftPoint_Y = 0
+    countLeftPointsWithGap2 = 0     # record the number of points with the gap == 2.
+
+    # go through each col.
     for i in range(0, len(result)):
         item = result[i]
         X = item[0]     # col
         Y_list = item[1]    # row
 
-        y, max_gap, stop = isContinuous(Y_list)
-        # y, stop = isContinuous(Y_list, gap)
-        point_y = y
+        point_y, max_gap, stop = isContinuous(Y_list, gap)
         completeLeft = stop
-        if completeLeft is True:           # find the intersection point.
+
+        # 1. find out the intersection point.
+        if completeLeft is True:
+            if find_first_left is False:
+                leftPoint_X = X - 1
+                if leftPoint_X < 0:
+                    leftPoint_X = 0
             break
 
+        # 2. record the points with the gap == 2, before find out the target point.
         if find_first_left is False and max_gap == 2:
             find_first_left = True
             left_first_x = X
@@ -256,7 +257,7 @@ def modifyEdges(edges, gap):
         if find_first_left is True:
             countLeftPointsWithGap2 += 1
 
-        if countLeftPointsWithGap2 == 10:
+        if countLeftPointsWithGap2 == 10:   # Exit after finding at most 10 points.
             leftPoint_Y = left_first_y
             leftPoint_X = left_first_x
             break
@@ -264,25 +265,32 @@ def modifyEdges(edges, gap):
             leftPoint_Y = gap - point_y
             leftPoint_X = X
 
-    # get the most left RIGHT point.
+    # get the most left RIGHT point (similar with the finding left point) ####################
     result = sorted(result, reverse=True)
     print(result)
+
+    rightPoint_X = 0
+    rightPoint_Y = 0
 
     right_first_x = 0
     right_first_y = 0
     find_first_right = False
     countRightPointsWithGap2 = 0
-    rightPoint_X = 0
-    rightPoint_Y = 0
+
     for j in range(0, len(result)):
         item = result[j]
         X = item[0]  # col
         Y_list = item[1]  # row
-        y, max_gap, stop = isContinuous(Y_list)
-        # y, stop = isContinuous(Y_list, gap)
-        point_y = y
+
+        point_y, max_gap, stop = isContinuous(Y_list, gap)
         completeRight = stop
+
+        # 1. find out the intersection point.
         if completeRight is True:  # find the intersection point.
+            if find_first_right is False:
+                rightPoint_X = X + 1
+                if rightPoint_X > width:
+                    rightPoint_X = width
             break
 
         if find_first_right is False and max_gap == 2:
@@ -301,6 +309,8 @@ def modifyEdges(edges, gap):
             rightPoint_Y = gap - point_y
             rightPoint_X = X
 
+    print(rightPoint_X, rightPoint_Y)
+
     leftPoint_Y = min(leftPoint_Y, 4)
     rightPoint_Y = min(rightPoint_Y, 4)
     leftPoint_Y = max(leftPoint_Y, 3)
@@ -308,7 +318,7 @@ def modifyEdges(edges, gap):
     return leftPoint_X, leftPoint_Y, rightPoint_X, rightPoint_Y
 
 
-def isContinuous(list):
+def isContinuous(list, gap):
     point_y = 0     # row
     max_gap = 1
     for i in reversed(range(1, len(list))):
@@ -316,7 +326,7 @@ def isContinuous(list):
         if diff > 1:
             max_gap = max(max_gap, diff)
             point_y = list[i]
-            if list[i] < 5:
+            if list[i] < gap/2:
                 return point_y, max_gap, True
             else:
                 break
