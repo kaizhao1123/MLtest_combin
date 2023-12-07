@@ -1,8 +1,11 @@
 import math
 import os
+from os.path import join
+
 import cv2
 import numpy as np
 import torch
+import scipy.io as sio
 from PIL import Image
 # from tkinter import messagebox
 
@@ -70,9 +73,19 @@ def save_image_batch_to_disk(tensor, output_dir, file_name, img_shape=None):
         tmp_img = cv2.resize(tmp_img, (i_shape[0], i_shape[1]))
 
     fuse = tmp_img
+
     fuse = fuse.astype(np.uint8)
 
-    output_file_name_f = os.path.join(output_dir, file_name)
-    cv2.imwrite(output_file_name_f, fuse)
+    print(np.shape(fuse))
+    #
+    # output_file_name_f = os.path.join(output_dir, file_name)
+    # cv2.imwrite(output_file_name_f, fuse)
+
+    imageName = os.path.splitext(file_name)[0]
+    # save to .mat
+    sio.savemat(join(output_dir, 'test_mat', '{}.mat'.format(imageName)), {'result': fuse})
+
+    # save to .png
+    Image.fromarray(fuse).save(join(output_dir, 'test_png', '{}.png'.format(imageName)))
 
     # #########################

@@ -3,6 +3,7 @@ import os
 import sys
 import time
 
+import scipy.io as io
 import cv2
 import numpy as np
 import torch
@@ -13,15 +14,15 @@ from image import save_image_batch_to_disk
 from modelB4 import LDC
 
 
+def app_path():
+    """Returns the base application path."""
+    if hasattr(sys, 'frozen'):
+        # Handles PyInstaller
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(__file__)
+
+
 def usingLDC():
-
-    def app_path():
-        """Returns the base application path."""
-        if hasattr(sys, 'frozen'):
-            # Handles PyInstaller
-            return os.path.dirname(sys.executable)
-        return os.path.dirname(__file__)
-
     root_path = app_path()
     print(root_path)
 
@@ -38,13 +39,14 @@ def usingLDC():
     img_width = 512
     img_height = 512
     # mean_bgr = [103.939, 116.779, 123.68]
-    mean_bgr = [160.913,160.275,162.239]
+    mean_bgr = [160.913, 160.275, 162.239]
 
+    # the input path
     imagePath = os.path.join(root_path, 'pic')
     os.makedirs(imagePath, exist_ok=True)
 
     # the output path.
-    output_dir = os.path.join(root_path, 'result')
+    output_dir = os.path.join(root_path, 'test_result')
     os.makedirs(output_dir, exist_ok=True)
 
     # load the weight of the model to local device
@@ -57,34 +59,38 @@ def usingLDC():
     # Put model in evaluation mode
     model.eval()
 
-    for imgId in range(1, 37):
+    for imageFile in os.listdir(imagePath):
+        imageName = os.path.splitext(imageFile)[0]
+        image = cv2.imread(os.path.join(imagePath, imageFile), cv2.IMREAD_COLOR)
 
+        # for imgId in range(1, 37):
         # imgId = 16
 
         # image = cv2.imread(os.path.join(imagePath, "00{:02d}.bmp".format(imgId)), cv2.IMREAD_COLOR)
-        #
-        # img = cv2.resize(image, (img_width, img_height))
-        # img = np.array(img, dtype=np.float32)
-        # img -= mean_bgr
-        # img = img.transpose((2, 0, 1))
-        # img = torch.from_numpy(img.copy()).float()
-        # inputImage = torch.unsqueeze(img, dim=0)
-        #
-        # targetImageShape = [torch.tensor([image.shape[0]]), torch.tensor([image.shape[1]])]
+
+        img = cv2.resize(image, (img_width, img_height))
+        img = np.array(img, dtype=np.float32)
+        img -= mean_bgr
+        img = img.transpose((2, 0, 1))
+        img = torch.from_numpy(img.copy()).float()
+        inputImage = torch.unsqueeze(img, dim=0)
+
+        targetImageShape = [torch.tensor([image.shape[0]]), torch.tensor([image.shape[1]])]
         # file_names = "00{:02d}.png".format(imgId)
-        #
-        # # # test the input image.
-        # with torch.no_grad():
-        #     preds = model(inputImage)  # get the tensor of the result image(contour)
-        #     save_image_batch_to_disk(preds,
-        #                              output_dir,
-        #                              file_names,
-        #                              targetImageShape
-        #                              )
-        #     torch.cuda.empty_cache()
+        file_names = imageName + '.png'
+
+        # # test the input image.
+        with torch.no_grad():
+            preds = model(inputImage)  # get the tensor of the result image(contour)
+            save_image_batch_to_disk(preds,
+                                     output_dir,
+                                     file_names,
+                                     targetImageShape
+                                     )
+            torch.cuda.empty_cache()
 
         # convert to maskImage
-        convertToMask(output_dir, '00{:02d}.png'.format(imgId))
+        # convertToMask(output_dir, '00{:02d}.png'.format(imgId))
 
     # .__getitem__(0)
     # test(checkpoint_path, dataloader_val, model, device, output_dir)
@@ -95,6 +101,122 @@ def usingLDC():
     # messagebox.showerror("test info", "complete test! ")
 
 
+# ########################################### convertMaskToMat  Start #################################
+# convert the test image's format to MAT, to create the figures: OIS, ODS, PR
+def convertMaskToMat():
+    root_path = app_path()
+    print(root_path)
+
+    # the input path.
+    src_dir = os.path.join(root_path, 'test_result/test_png')
+    os.makedirs(src_dir, exist_ok=True)
+
+    # the output path.
+    save_dir = os.path.join(root_path, 'test_result/test_mat')
+    os.makedirs(save_dir, exist_ok=True)
+
+    all_file = os.walk(src_dir)
+
+    for root, dirs, files in all_file:
+        for file in files:
+            file_ext = os.path.splitext(file)
+            front, ext = file_ext
+
+            # read img
+            img = Image.open(src_dir + '/' + file)
+
+            # save.npy
+            res = np.array(img, dtype='uint8')
+            # res = res[:,:,-1]
+            print(front)
+            print(np.shape(res))
+            np.save(save_dir + '/' + front + '.npy', res)
+
+            # save.mat
+            numpy_file = np.load(save_dir + '/' + front + '.npy')
+            io.savemat(save_dir + '/' + front + '.mat', {'groundTruth': [{'Boundaries': numpy_file}]})
+
+            # delete the mat in the middle process
+            os.remove(save_dir + '/' + front + '.npy')
+
+            # delete_command = 'rm -rf ' + save_dir + '/' + '*.npy'
+            # print(delete_command)
+            # os.system(delete_command)
+
+
+# ########################################### convertMaskToMat  end #################################
+
+def convert01():
+    root_path = app_path()
+    print(root_path)
+
+    # the input path.
+    src_dir = os.path.join(root_path, 'test_result/test_single')
+    os.makedirs(src_dir, exist_ok=True)
+
+    # the output path.
+    save_dir = os.path.join(root_path, 'test_result/test_single/1')
+    os.makedirs(save_dir, exist_ok=True)
+
+    all_file = os.walk(src_dir)
+
+    for root, dirs, files in all_file:
+        for file in files:
+            file_ext = os.path.splitext(file)
+            front, ext = file_ext
+
+            # read img
+            img = Image.open(src_dir + '/' + file)
+
+            res = np.array(img, dtype='uint8')
+            # print(res)
+            res = res[:, :, -1]
+            count = 0
+            h, w = np.shape(res)
+            for i in range(0, h):
+                for j in range(0, w):
+                    if res[i][j] >= 245:
+                        count += 1
+                        res[i][j] = 1
+                    else:
+                        res[i][j] = 0
+            print(count)
+            print(np.shape(res))
+
+            # cv2.imwrite(save_dir + front + '.png', res)
+            # img = Image.fromarray(res)  # convert array to image
+            # img.save(save_dir + '/' + front + '.png')
+
+        # img = Image.open(save_dir + '/' + '0001.png')
+        #
+        # res = np.array(img, dtype='uint8')
+        # # print(res)
+        #
+        # count = 0
+        # h, w = np.shape(img)
+        # for i in range(0, h):
+        #     for j in range(0, w):
+        #         if res[i][j] >= 1:
+        #             count += 1
+        # print(count)
+        # print(np.shape(res))
+
+            # save.npy
+            # res = np.array(img, dtype='uint8')
+            # res = res[:,:,-1]
+            # print(front)
+            # print(np.shape(res))
+            np.save(save_dir + '/' + front + '.npy', res)
+
+            # save.mat
+            numpy_file = np.load(save_dir + '/' + front + '.npy')
+            io.savemat(save_dir + '/' + front + '.mat', {'groundTruth': [{'Boundaries': numpy_file}]})
+
+            # delete the mat in the middle process
+            os.remove(save_dir + '/' + front + '.npy')
+
+
+# ########################################### convertToMask  Start #################################
 def convertToMask(output_dir, file_name):
     # convert to mask
     img = cv2.imread(os.path.join(output_dir, file_name))
@@ -144,15 +266,15 @@ def convertToMask(output_dir, file_name):
     coverImage_right[:, :] = (0, 0, 0)
 
     # get the black triangle based on the LEFT point.
-    left_pt1 = (lx, height-ly)
+    left_pt1 = (lx, height - ly)
     left_pt2 = (lx, height)
-    left_pt3 = (lx+2*ly+1, height)  # to adjust with +1.
+    left_pt3 = (lx + 2 * ly + 1, height)  # to adjust with +1.
     left_triangle_cnt = np.array([left_pt1, left_pt2, left_pt3])
 
     # get the black triangle based on the RIGHT point.
-    right_pt1 = (rx, height-ry)
+    right_pt1 = (rx, height - ry)
     right_pt2 = (rx, height)
-    right_pt3 = (rx-2*ry-1, height)       # to adjust with -1.
+    right_pt3 = (rx - 2 * ry - 1, height)  # to adjust with -1.
     right_triangle_cnt = np.array([right_pt1, right_pt2, right_pt3])
 
     image_contour[height - ly: height, : lx] = coverImage_left
@@ -242,14 +364,14 @@ def modifyEdges(edges, gap):
         if y_list[0] == 0:
             temp.append(x)
     crop_left = temp[0]
-    crop_right = temp[len(temp)-1]
+    crop_right = temp[len(temp) - 1]
 
     result = []
     for item in pre_result:
         # print(item)
         x = item[0]
         y_list = item[1]
-        if crop_left <= x <= crop_right and y_list[len(y_list)-1] == (gap-1):
+        if crop_left <= x <= crop_right and y_list[len(y_list) - 1] == (gap - 1):
             result.append((x, y_list))
     # print("result")
     # print(result)
@@ -265,14 +387,14 @@ def modifyEdges(edges, gap):
     leftPoint_Y = 0
     for i in range(0, len(result)):
         item = result[i]
-        X = item[0]     # col
-        Y_list = item[1]    # row
+        X = item[0]  # col
+        Y_list = item[1]  # row
 
         y, max_gap, stop = isContinuous(Y_list)
         # y, stop = isContinuous(Y_list, gap)
         point_y = y
         completeLeft = stop
-        if completeLeft is True:           # find the intersection point.
+        if completeLeft is True:  # find the intersection point.
             break
 
         if find_first_left is False and max_gap == 2:
@@ -336,7 +458,7 @@ def modifyEdges(edges, gap):
 
 
 def isContinuous(list):
-    point_y = 0     # row
+    point_y = 0  # row
     max_gap = 1
     for i in reversed(range(1, len(list))):
         diff = list[i] - list[i - 1]
@@ -351,3 +473,4 @@ def isContinuous(list):
         return point_y, max_gap, True
     else:
         return point_y, max_gap, False
+# ########################################### convertToMask  End #################################

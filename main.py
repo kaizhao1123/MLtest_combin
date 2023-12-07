@@ -4,7 +4,7 @@ import os.path
 import tkinter as tk
 import tracemalloc
 
-from LDC import usingLDC
+from LDC import usingLDC, convertMaskToMat, convert01
 from dexined import usingDexiNed, convertToMask
 from dexined_multiple import usingDexiNed_multiple, combineImages
 
@@ -25,7 +25,12 @@ if __name__ == '__main__':
         # usingDexiNed()      # run model to get the contour of single image.
         # usingDexiNed_multiple()
         # combineImages()
-        usingLDC()
+
+        # ********using LDC *********
+        # usingLDC()
+        # convertMaskToMat()
+        convert01()
+        # ***************************
 
 
 
