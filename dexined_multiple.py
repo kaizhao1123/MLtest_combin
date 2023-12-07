@@ -34,29 +34,28 @@ def usingDexiNed_multiple():
     model = DexiNed().to(device)
 
     #####################################################################
-    # load data
+    # set property of image to suit for the model
     img_width = 512
     img_height = 512
     mean_bgr = [103.939, 116.779, 123.68]
 
-    imagePath = os.path.join(root_path, 'pic')
+    # the input path
+    imagePath = os.path.join(root_path, 'sample_pic')
     os.makedirs(imagePath, exist_ok=True)
 
     # the output path.
-    output_dir = os.path.join(root_path, 'pic_result')
+    output_dir = os.path.join(root_path, 'sample_result')
     os.makedirs(output_dir, exist_ok=True)
 
     # load the weight of the model to local device
-    checkpoint_path = os.path.join(root_path, 'checkpoints/10_model.pth')
-    # os.makedirs(output_dir, exist_ok=True)
-
-    model.load_state_dict(torch.load(checkpoint_path,
-                                     map_location=device))
+    checkpoint_path = os.path.join(root_path, 'checkpoints/10_model_DexiNed.pth')
+    model.load_state_dict(torch.load(checkpoint_path, map_location=device))
     model.eval()
 
-    for imgId in range(1, 37):
-        image = cv2.imread(os.path.join(imagePath, "00{:02d}.bmp".format(imgId)), cv2.IMREAD_COLOR)
-
+    # for multiple images
+    for imageName in os.listdir(imagePath):
+        imageNum = os.path.splitext(imageName)[0]
+        image = cv2.imread(os.path.join(imagePath, imageName), cv2.IMREAD_COLOR)
         img = cv2.resize(image, (img_width, img_height))
         img = np.array(img, dtype=np.float32)
         img -= mean_bgr
@@ -65,15 +64,13 @@ def usingDexiNed_multiple():
         inputImage = torch.unsqueeze(img, dim=0)
 
         targetImageShape = [torch.tensor([image.shape[0]]), torch.tensor([image.shape[1]])]
-        # print(targetImageShape)
-        file_names = "00{:02d}.bmp".format(imgId)
 
         # # test the input image.
         with torch.no_grad():
             preds = model(inputImage)  # get the tensor of the result image(contour)
             save_image_batch_to_disk(preds,
                                      output_dir,
-                                     file_names,
+                                     imageName,
                                      targetImageShape
                                      )
             torch.cuda.empty_cache()
@@ -88,50 +85,50 @@ def usingDexiNed_multiple():
 
 def combineImages():
     root_path = app_path()
-    image_ori_path = os.path.join(root_path, 'pic')
-    image_contour_path = os.path.join(root_path, 'pic_result')
-    output_path = os.path.join(root_path, 'pic_result_combine')
+    image_ori_path = os.path.join(root_path, 'sample_pic')
+    image_contour_path = os.path.join(root_path, 'sample_result/test_png')
+    output_path = os.path.join(root_path, 'sample_result/test_mask')
     for imgId in range(1, 37):
         # image_ori = cv2.imread(os.path.join(image_ori_path, "00{:02d}.bmp".format(imgId)), cv2.IMREAD_COLOR)
-        # image_contour = cv2.imread(os.path.join(image_contour_path, "00{:02d}.bmp".format(imgId)), cv2.IMREAD_COLOR)
-        # width = image_contour.shape[1]
-        # height = image_contour.shape[0]
-        #
-        # # get the most right LEFT point and the most left RIGHT point.
-        # lx, ly, rx, ry = modifyEdges(image_contour, 10)
-        # print(imgId, lx, ly, rx, ry)
-        #
-        # coverImage_left = np.zeros((ly, lx, 3))
-        # coverImage_right = np.zeros((ry, width - rx, 3))
-        # coverImage_left[:, :] = (0, 0, 0)
-        # coverImage_right[:, :] = (0, 0, 0)
-        #
-        # # get the black triangle based on the LEFT point.
-        # left_pt1 = (lx, height-ly)
-        # left_pt2 = (lx, height)
-        # left_pt3 = (lx+2*ly+1, height)  # to adjust with +1.
-        # left_triangle_cnt = np.array([left_pt1, left_pt2, left_pt3])
-        #
-        # # get the black triangle based on the RIGHT point.
-        # right_pt1 = (rx, height-ry)
-        # right_pt2 = (rx, height)
-        # right_pt3 = (rx-2*ry-1, height)       # to adjust with -1.
-        # right_triangle_cnt = np.array([right_pt1, right_pt2, right_pt3])
-        #
-        # image_contour[height - ly: height, : lx] = coverImage_left
-        # image_contour[height - ry: height, rx:] = coverImage_right
-        #
-        # # combine the contour image and the original image.
-        # # result_image = cv2.add(image_contour, image_ori)
-        # result_image = image_contour
-        #
-        # # add the left triangle and right triangle.
-        # cv2.drawContours(result_image, [left_triangle_cnt], 0, (0, 0, 0), -1)
-        # cv2.drawContours(result_image, [right_triangle_cnt], 0, (0, 0, 0), -1)
-        #
-        # cv2.imwrite(os.path.join(output_path, '00{:02d}.bmp'.format(imgId)), result_image)
+        image_contour = cv2.imread(os.path.join(image_contour_path, "00{:02d}.png".format(imgId)), cv2.IMREAD_COLOR)
+        width = image_contour.shape[1]
+        height = image_contour.shape[0]
 
-        convertToMask(image_contour_path, '00{:02d}.bmp'.format(imgId))
+        # get the most right LEFT point and the most left RIGHT point.
+        lx, ly, rx, ry = modifyEdges(image_contour, 15)
+        print(imgId, lx, ly, rx, ry)
+
+        coverImage_left = np.zeros((ly, lx, 3))
+        coverImage_right = np.zeros((ry, width - rx, 3))
+        coverImage_left[:, :] = (0, 0, 0)
+        coverImage_right[:, :] = (0, 0, 0)
+
+        # get the black triangle based on the LEFT point.
+        left_pt1 = (lx, height-ly)
+        left_pt2 = (lx, height)
+        left_pt3 = (lx+2*ly+1, height)  # to adjust with +1.
+        left_triangle_cnt = np.array([left_pt1, left_pt2, left_pt3])
+
+        # get the black triangle based on the RIGHT point.
+        right_pt1 = (rx, height-ry)
+        right_pt2 = (rx, height)
+        right_pt3 = (rx-2*ry-1, height)       # to adjust with -1.
+        right_triangle_cnt = np.array([right_pt1, right_pt2, right_pt3])
+
+        image_contour[height - ly: height, : lx] = coverImage_left
+        image_contour[height - ry: height, rx:] = coverImage_right
+
+        # combine the contour image and the original image.
+        # result_image = cv2.add(image_contour, image_ori)
+        result_image = image_contour
+
+        # add the left triangle and right triangle.
+        cv2.drawContours(result_image, [left_triangle_cnt], 0, (0, 0, 0), -1)
+        cv2.drawContours(result_image, [right_triangle_cnt], 0, (0, 0, 0), -1)
+
+        cv2.imwrite(os.path.join(output_path, '00{:02d}.png'.format(imgId)), result_image)
+
+        convertToMask(output_path, '00{:02d}.png'.format(imgId))
 
 
 #
@@ -143,11 +140,11 @@ def convertToMask(output_dir, file_name):
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # change to gray image
 
-    thresh = cv2.threshold(gray, 10, 255, cv2.THRESH_BINARY)[1]
+    thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY)[1]
     element = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))  # Morphological denoising
     dst = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, element)
     contours = cv2.findContours(dst, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
-    contours.sort(key=cv2.contourArea)
+    # contours.sort(key=cv2.contourArea)
     big_contour = max(contours, key=cv2.contourArea)
     maxRect = cv2.boundingRect(big_contour)
     X, Y, width, height = maxRect
@@ -158,7 +155,7 @@ def convertToMask(output_dir, file_name):
     cv2.drawContours(bi, [big_contour], 0, (255, 255, 255), thickness=-1)
     # for i in range(0,1):
     #     cv2.drawContours(bi, contours[i], 0, (255, 0, 0), thickness=2)
-    cv2.imwrite(output_dir + "/" + file_name + '_Thre_drawCon_binary.jpg', bi)
+    # cv2.imwrite(output_dir + "/" + file_name + '_Thre_drawCon_binary.jpg', bi)
 
     firstCrop_binary = bi[Y: Y + height, X: X + width]
     start_Y = math.ceil((200 - height) / 2)
@@ -170,9 +167,10 @@ def convertToMask(output_dir, file_name):
     mask = cv2.cvtColor(mask_image, cv2.COLOR_BGR2GRAY)  # array
     mask = Image.fromarray(mask)  # convert to image
 
-    mask.save(output_dir + "/Mask_" + file_name)
+    mask.save(output_dir + "/mask/Mask_" + file_name)
 
 
+####################################################
 # remove the bottom noisy of the original image.
 def modifyEdges(edges, gap):
     height, width, _ = edges.shape

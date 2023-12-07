@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.9 (MLtest2)" project-jdk-type="Python SDK" />
+  <component name="Black">
+    <option name="sdkName" value="Python 3.9 (MLtest_combin)" />
+  </component>
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.9 (MLtest_combin)" project-jdk-type="Python SDK" />
 </project>

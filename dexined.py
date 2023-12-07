@@ -89,45 +89,39 @@ def usingDexiNed():
     #                             num_workers=1)
 
     #####################################################################
-    # load data
+    # set property of image to suit for the model
     img_width = 512
     img_height = 512
     mean_bgr = [103.939, 116.779, 123.68]
 
-    imagePath = os.path.join(root_path, 'data')
+    # the input path
+    imagePath = os.path.join(root_path, 'sample_pic')
     os.makedirs(imagePath, exist_ok=True)
 
-    imgId = 13
+    # read one image
+    imgId = 16
     image = cv2.imread(os.path.join(imagePath, "00{:02d}.bmp".format(imgId)), cv2.IMREAD_COLOR)
-
-    # messagebox.showerror("image", os.path.join(imagePath, "00{:02d}.bmp".format(1)))
-
     img = cv2.resize(image, (img_width, img_height))
     img = np.array(img, dtype=np.float32)
     img -= mean_bgr
     img = img.transpose((2, 0, 1))
     img = torch.from_numpy(img.copy()).float()
     inputImage = torch.unsqueeze(img, dim=0)
-
     targetImageShape = [torch.tensor([image.shape[0]]), torch.tensor([image.shape[1]])]
     print(targetImageShape)
     file_names = "00{:02d}.png".format(imgId)
 
-    #######################################################################3
-
     # the output path.
-    output_dir = os.path.join(root_path, 'result')
+    output_dir = os.path.join(root_path, 'sample_result')
     os.makedirs(output_dir, exist_ok=True)
-    # messagebox.showerror("output_dir", output_dir)
 
     # load the weight of the model to local device
-    checkpoint_path = os.path.join(root_path, 'checkpoints/10_model.pth')
+    checkpoint_path = os.path.join(root_path, 'checkpoints/10_model_DexiNed.pth')
     os.makedirs(output_dir, exist_ok=True)
 
     model.load_state_dict(torch.load(checkpoint_path,
                                      map_location=device))
 
-    # messagebox.showerror("eval", "model")
     # Put model in evaluation mode
     model.eval()
 
@@ -159,7 +153,6 @@ def usingDexiNed():
     print("total time: ")
     print(time.time() - startTime)
     print('------------------- Test End -----------------------------')
-    #messagebox.showerror("test info", "complete test! ")
 
     convertToMask(output_dir, file_names)
 
@@ -214,8 +207,7 @@ def convertToMask(output_dir, file_name):
 
     mask_image[start_Y: start_Y + height, start_X: start_X + width] = firstCrop_binary
 
-
     mask = cv2.cvtColor(mask_image, cv2.COLOR_BGR2GRAY)  # array
     mask = Image.fromarray(mask)  # convert to image
 
-    mask.save("C:/Users/Kai Zhao/PycharmProjects/MLtest2/result/" + 'Mask_0{:02d}0.png'.format(9 - 1))
+    mask.save(output_dir + '/Mask_0{:02d}0.png'.format(16))

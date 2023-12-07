@@ -9,8 +9,6 @@ from dexined import usingDexiNed, convertToMask
 from dexined_multiple import usingDexiNed_multiple, combineImages
 
 
-
-
 if __name__ == '__main__':
 
     window = tk.Tk()
@@ -24,14 +22,13 @@ if __name__ == '__main__':
 
         # usingDexiNed()      # run model to get the contour of single image.
         # usingDexiNed_multiple()
-        # combineImages()
+        combineImages()
 
         # ********using LDC *********
         # usingLDC()
         # convertMaskToMat()
-        convert01()
+        # convert01()
         # ***************************
-
 
 
         # print("DIP time: --- %0.3f seconds ---" % (time() - startTime) + "\n")

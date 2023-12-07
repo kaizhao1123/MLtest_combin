@@ -83,7 +83,7 @@ def save_image_batch_to_disk(tensor, output_dir, file_name, img_shape=None):
 
     imageName = os.path.splitext(file_name)[0]
     # save to .mat
-    sio.savemat(join(output_dir, 'test_mat', '{}.mat'.format(imageName)), {'result': fuse})
+    # sio.savemat(join(output_dir, 'test_mat', '{}.mat'.format(imageName)), {'result': fuse})
 
     # save to .png
     Image.fromarray(fuse).save(join(output_dir, 'test_png', '{}.png'.format(imageName)))
