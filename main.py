@@ -4,9 +4,8 @@ import os.path
 import tkinter as tk
 import tracemalloc
 
-from LDC import usingLDC, convertMaskToMat, convert01
-from dexined import usingDexiNed, convertToMask
-from dexined_multiple import usingDexiNed_multiple, combineImages
+from cnn import usingDexiNed, usingLDC
+from image import combineImages
 
 
 class Object(object):
@@ -54,14 +53,14 @@ if __name__ == '__main__':
     obj_path_test.path_pic = path_test_input
     obj_path_test.path_result = path_test_output
 
-    # ******** using DexiNed *********
-    # usingDexiNed()      # run model to get the contour of single image.
-    # usingDexiNed_multiple(obj_path_test)
-    combineImages(obj_path_test)
+    # ******** using DexiNed *********************************************
+    # usingDexiNed(obj_path_sample)  # generate the contour images from the input images using the model.
+    # combineImages(obj_path_sample, 'dexined')  # remove the bottom noise of the contour images, and save to mask images.
     # ***************************
 
-    # ********using LDC *********
-    # usingLDC()
+    # ********using LDC ***************************************************
+    usingLDC(obj_path_sample)
+    combineImages(obj_path_sample, 'ldc')
     # convertMaskToMat()
     # convert01()
     # ***************************

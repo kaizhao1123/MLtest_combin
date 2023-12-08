@@ -14,90 +14,67 @@ from image import save_image_batch_to_disk
 from modelB4 import LDC
 
 
-def app_path():
-    """Returns the base application path."""
-    if hasattr(sys, 'frozen'):
-        # Handles PyInstaller
-        return os.path.dirname(sys.executable)
-    return os.path.dirname(__file__)
-
-
-def usingLDC():
-    root_path = app_path()
-    print(root_path)
-
-    startTime = time.time()
-    # Get computing device
-    device = torch.device('cpu' if torch.cuda.device_count() == 0
-                          else 'cuda')
-    print("device: ")
-    print(device)
-
-    model = LDC().to(device)
-
-    # load data
-    img_width = 512
-    img_height = 512
-    # mean_bgr = [103.939, 116.779, 123.68]
-    mean_bgr = [160.913, 160.275, 162.239]
-
-    # the input path
-    imagePath = os.path.join(root_path, 'pic')
-    os.makedirs(imagePath, exist_ok=True)
-
-    # the output path.
-    output_dir = os.path.join(root_path, 'test_result')
-    os.makedirs(output_dir, exist_ok=True)
-
-    # load the weight of the model to local device
-    checkpoint_path = os.path.join(root_path, 'checkpoints/19_model.pth')
-    # os.makedirs(output_dir, exist_ok=True)
-
-    model.load_state_dict(torch.load(checkpoint_path,
-                                     map_location=device))
-
-    # Put model in evaluation mode
-    model.eval()
-
-    for imageFile in os.listdir(imagePath):
-        imageName = os.path.splitext(imageFile)[0]
-        image = cv2.imread(os.path.join(imagePath, imageFile), cv2.IMREAD_COLOR)
-
-        # for imgId in range(1, 37):
-        # imgId = 16
-
-        # image = cv2.imread(os.path.join(imagePath, "00{:02d}.bmp".format(imgId)), cv2.IMREAD_COLOR)
-
-        img = cv2.resize(image, (img_width, img_height))
-        img = np.array(img, dtype=np.float32)
-        img -= mean_bgr
-        img = img.transpose((2, 0, 1))
-        img = torch.from_numpy(img.copy()).float()
-        inputImage = torch.unsqueeze(img, dim=0)
-
-        targetImageShape = [torch.tensor([image.shape[0]]), torch.tensor([image.shape[1]])]
-        # file_names = "00{:02d}.png".format(imgId)
-        file_names = imageName + '.png'
-
-        # # test the input image.
-        with torch.no_grad():
-            preds = model(inputImage)  # get the tensor of the result image(contour)
-            save_image_batch_to_disk(preds,
-                                     output_dir,
-                                     file_names,
-                                     targetImageShape
-                                     )
-            torch.cuda.empty_cache()
-
-        # convert to maskImage
-        # convertToMask(output_dir, '00{:02d}.png'.format(imgId))
-
-    # .__getitem__(0)
-    # test(checkpoint_path, dataloader_val, model, device, output_dir)
-
-    print("total time: ")
-    print(time.time() - startTime)
-    print('------------------- Test End -----------------------------')
+# def usingLDC(obj_path):
+#
+#     startTime = time.time()
+#     # Get computing device
+#     device = torch.device('cpu' if torch.cuda.device_count() == 0
+#                           else 'cuda')
+#     print("device: ")
+#     print(device)
+#
+#     model = LDC().to(device)
+#
+#     # load data
+#     img_width = 512
+#     img_height = 512
+#     # mean_bgr = [103.939, 116.779, 123.68]
+#     mean_bgr = [160.913, 160.275, 162.239]
+#
+#     # the input path
+#     imagePath = obj_path.path_pic
+#
+#     # the output path.
+#     output_dir = obj_path.path_result + 'ldc/'
+#     if not os.path.exists(output_dir):
+#         os.mkdir(output_dir)
+#
+#     # load the weight of the model to local device
+#     checkpoint_path = os.path.join(obj_path.path_root, 'checkpoints/19_model_LDC.pth')
+#     model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+#     model.eval()
+#
+#     for imageName in os.listdir(imagePath):
+#         image = cv2.imread(os.path.join(imagePath, imageName), cv2.IMREAD_COLOR)
+#
+#         img = cv2.resize(image, (img_width, img_height))
+#         img = np.array(img, dtype=np.float32)
+#         img -= mean_bgr
+#         img = img.transpose((2, 0, 1))
+#         img = torch.from_numpy(img.copy()).float()
+#         inputImage = torch.unsqueeze(img, dim=0)
+#
+#         targetImageShape = [torch.tensor([image.shape[0]]), torch.tensor([image.shape[1]])]
+#
+#         # # test the input image.
+#         with torch.no_grad():
+#             preds = model(inputImage)  # get the tensor of the result image(contour)
+#             save_image_batch_to_disk(preds,
+#                                      output_dir,
+#                                      imageName,
+#                                      targetImageShape
+#                                      )
+#             torch.cuda.empty_cache()
+#
+#         # convert to maskImage
+#         # convertToMask(output_dir, '00{:02d}.png'.format(imgId))
+#
+#     # .__getitem__(0)
+#     # test(checkpoint_path, dataloader_val, model, device, output_dir)
+#
+#     print("total time: ")
+#     print(time.time() - startTime)
+#     print('------------------- Test End -----------------------------')
     # messagebox.showerror("test info", "complete test! ")
 
 
@@ -217,10 +194,9 @@ def convert01():
 
 
 # ########################################### convertToMask  Start #################################
-def convertToMask(output_dir, file_name):
+def convertToMask(input_path, file_name, output_path):
     # convert to mask
-    img = cv2.imread(os.path.join(output_dir, file_name))
-    # print(img.shape)
+    img = cv2.imread(os.path.join(input_path, file_name))
     # img = cv2.bitwise_not(img)
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # change to gray image
@@ -229,33 +205,33 @@ def convertToMask(output_dir, file_name):
     element = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))  # Morphological denoising
     dst = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, element)
     contours = cv2.findContours(dst, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
-    contours.sort(key=cv2.contourArea)
+    # contours.sort(key=cv2.contourArea)
     big_contour = max(contours, key=cv2.contourArea)
     maxRect = cv2.boundingRect(big_contour)
     X, Y, width, height = maxRect
 
     # ## save ori
-    h, w, _ = img.shape
-    bi = np.zeros([h, w, 3], dtype=np.uint8)
-    cv2.drawContours(bi, [big_contour], 0, (255, 255, 255), thickness=1)
-    firstCrop_binary = bi[Y: Y + height, X: X + width]
-    start_Y = math.ceil((200 - height) / 2)
-    start_X = math.ceil((200 - width) / 2)
-    ori_image = np.zeros([200, 200, 3], dtype=np.uint8)
-    ori_image[start_Y: start_Y + height, start_X: start_X + width] = firstCrop_binary
-    ori = cv2.cvtColor(ori_image, cv2.COLOR_BGR2GRAY)  # array
-    ori = Image.fromarray(ori)  # convert to image
-    ori.save(output_dir + "/Ori_" + file_name)
+    # h, w, _ = img.shape
+    # bi = np.zeros([h, w, 3], dtype=np.uint8)
+    # cv2.drawContours(bi, [big_contour], 0, (255, 255, 255), thickness=1)
+    # firstCrop_binary = bi[Y: Y + height, X: X + width]
+    # start_Y = math.ceil((200 - height) / 2)
+    # start_X = math.ceil((200 - width) / 2)
+    # ori_image = np.zeros([200, 200, 3], dtype=np.uint8)
+    # ori_image[start_Y: start_Y + height, start_X: start_X + width] = firstCrop_binary
+    # ori = cv2.cvtColor(ori_image, cv2.COLOR_BGR2GRAY)  # array
+    # ori = Image.fromarray(ori)  # convert to image
+    # ori.save(input_path + "/Ori_" + file_name)
     # ###################################################
 
     # convert to binary mask image ##########################
     h, w, _ = img.shape
     bi = np.zeros([h, w, 3], dtype=np.uint8)
     cv2.drawContours(bi, [big_contour], 0, (255, 255, 255), thickness=-1)
-    cv2.imwrite(output_dir + "/Mask_" + file_name, bi)
+    cv2.imwrite(input_path + "/Mask_" + file_name, bi)
 
     # modify edge
-    image_contour = cv2.imread(os.path.join(output_dir, 'Mask_' + file_name), cv2.IMREAD_COLOR)
+    image_contour = cv2.imread(os.path.join(input_path, 'Mask_' + file_name), cv2.IMREAD_COLOR)
     lx, ly, rx, ry = modifyEdges(image_contour, 10)
     # print(lx, ly, rx, ry)
     width = image_contour.shape[1]
@@ -286,11 +262,11 @@ def convertToMask(output_dir, file_name):
     cv2.drawContours(result_image, [left_triangle_cnt], 0, (0, 0, 0), -1)
     cv2.drawContours(result_image, [right_triangle_cnt], 0, (0, 0, 0), -1)
 
-    cv2.imwrite(output_dir + "/Mask_" + file_name, result_image)
+    cv2.imwrite(input_path + "/Mask_" + file_name, result_image)
     ###########################################################
 
     # ######## crop and put it in the the center of the img.
-    img = cv2.imread(output_dir + "/Mask_" + file_name)
+    img = cv2.imread(input_path + "/Mask_" + file_name)
     # img = cv2.bitwise_not(img)
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # change to gray image
@@ -317,7 +293,7 @@ def convertToMask(output_dir, file_name):
     mask = cv2.cvtColor(mask_image, cv2.COLOR_BGR2GRAY)  # array
     mask = Image.fromarray(mask)  # convert to image
 
-    mask.save(output_dir + "/Mask_" + file_name)
+    mask.save(input_path + "/Mask_" + file_name)
 
 
 # remove the bottom noisy of the original image.
