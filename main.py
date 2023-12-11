@@ -4,7 +4,9 @@ import os.path
 import tkinter as tk
 import tracemalloc
 
+from augment import augmentBoth
 from cnn import usingDexiNed, usingLDC
+from evalEdges import evalEdges
 from image import combineImages
 
 
@@ -31,6 +33,8 @@ if __name__ == '__main__':
     path_sample_output = path_root + 'sample_result/'
     path_test_input = path_root + 'test_pic/'
     path_test_output = path_root + 'test_result/'
+    path_aug_input = path_root + 'augment_input/'
+    path_aug_output = path_root + 'augment_output/'
 
     if not os.path.exists(path_sample_input):
         os.mkdir(path_sample_input)
@@ -40,6 +44,10 @@ if __name__ == '__main__':
         os.mkdir(path_test_input)
     if not os.path.exists(path_test_output):
         os.mkdir(path_test_output)
+    if not os.path.exists(path_aug_input):
+        os.mkdir(path_aug_input)
+    if not os.path.exists(path_aug_output):
+        os.mkdir(path_aug_output)
     ###########################################
 
     # create object for paths
@@ -53,16 +61,29 @@ if __name__ == '__main__':
     obj_path_test.path_pic = path_test_input
     obj_path_test.path_result = path_test_output
 
+    obj_path_aug = Object()
+    obj_path_aug.path_root = path_root
+    obj_path_aug.path_pic = path_aug_input
+    obj_path_aug.path_result = path_aug_output
+
     # ******** using DexiNed *********************************************
     # usingDexiNed(obj_path_sample)  # generate the contour images from the input images using the model.
     # combineImages(obj_path_sample, 'dexined')  # remove the bottom noise of the contour images, and save to mask images.
     # ***************************
 
     # ********using LDC ***************************************************
-    usingLDC(obj_path_sample)
-    combineImages(obj_path_sample, 'ldc')
+    # usingLDC(obj_path_sample)
+    # combineImages(obj_path_sample, 'ldc')
     # convertMaskToMat()
     # convert01()
+    # ***************************
+
+    # ******** augment images ***************************************************
+    # augmentBoth(obj_path_aug)
+    # ***************************
+
+    # ******** eval edges ***************************************************
+    evalEdges()
     # ***************************
 
     # print("DIP time: --- %0.3f seconds ---" % (time() - startTime) + "\n")

@@ -43,16 +43,25 @@ def augmentOneImage(oriDir, imageName, saveDir, saveType, seed):
 
 
 # augment image dataset and ground truth dataset
-def augmentBoth(data_dir):
+def augmentBoth(obj_path):
 
+    # create folders
+    image_directories = obj_path.path_pic + 'data'
+    gt_directories = obj_path.path_pic + 'data_gt'
+    image_save_dir = obj_path.path_result + 'imgs'
+    gt_save_dir = obj_path.path_result + 'edges'
+
+    if not os.path.exists(image_directories):
+        os.mkdir(image_directories)
+    if not os.path.exists(gt_directories):
+        os.mkdir(gt_directories)
+    if not os.path.exists(image_save_dir):
+        os.mkdir(image_save_dir)
+    if not os.path.exists(gt_save_dir):
+        os.mkdir(gt_save_dir)
+
+    #
     seed = 1
-    # data_dir = 'C:/Users/Kai Zhao/PycharmProjects/LDC/'
-    image_directories = data_dir + 'data'
-    gt_directories = data_dir + 'data_gt'
-
-    image_save_dir = data_dir + 'augResult/img'
-    gt_save_dir = data_dir + 'augResult/edge'
-
     for imageName in os.listdir(image_directories):
         imageNum = os.path.splitext(imageName)[0]
         augmentOneImage(image_directories, imageName, image_save_dir, 'bmp', seed)
@@ -60,23 +69,23 @@ def augmentBoth(data_dir):
         seed+=1
 
     # create and save .lst file.
-    aug_image_dir = data_dir + 'augResult/img'
-    aug_edge_dir = data_dir + 'augResult/edge'
+    # aug_image_dir = data_dir + 'augResult/img'
+    # aug_edge_dir = data_dir + 'augResult/edge'
     files_ids = []
-    for imageName in os.listdir(aug_image_dir):
+    for imageName in os.listdir(image_save_dir):
         imageNum = os.path.splitext(imageName)[0]
         files_ids.append(
-            (os.path.join(aug_image_dir + '/' + imageNum + '.bmp'),
-             os.path.join(aug_edge_dir + '/' + imageNum + '.jpg'))
+            (os.path.join(image_save_dir + '/' + imageNum + '.bmp'),
+             os.path.join(gt_save_dir + '/' + imageNum + '.jpg'))
         )
-    save_path = os.path.join(data_dir + 'augResult', 'train_pair.lst')
+    save_path = os.path.join(obj_path.path_result, 'train_pair.lst')
     with open(save_path, 'w') as txtfile:
             json.dump(files_ids, txtfile)
 
 
-if __name__ == '__main__':
-    # augmentOneImage()
-    augmentBoth()
+# if __name__ == '__main__':
+#     # augmentOneImage()
+#     augmentBoth()
 
 
 #
